@@ -15,7 +15,6 @@ export default async ({ req, res, log, error }) => {
   const offset = (page - 1) * limit;
 
   try {
-    // Проверка наличия переменных окружения
     if (!databaseId || !collectionId) {
       throw new Error("Конфигурация базы данных или коллекции не найдена.");
     }
@@ -30,17 +29,28 @@ export default async ({ req, res, log, error }) => {
       ]
     );
 
-    const filteredDocuments = response.documents.map(doc => ({
-      d: doc.domain,
-      r: doc.date_registered, 
-    }));
+    // Удаление дубликатов с помощью Map
+    // Ключ — домен, значение — объект с данными
+    const uniqueMap = new Map();
 
-    // Успешный ответ
+    response.documents.forEach(doc => {
+      if (doc.domain) {
+        uniqueMap.set(doc.domain, {
+          d: doc.domain,
+          r: doc.date_registered
+        });
+      }
+    });
+
+    // Превращаем Map обратно в массив
+    const filteredDocuments = Array.from(uniqueMap.values());
+
     return res.json({
       success: true,
-      message: "", // Пустое сообщение при успехе
+      message: "",
       meta: {
         total: response.total,
+        count_after_dedup: filteredDocuments.length, // кол-во без дубликатов в текущей пачке
         page: page,
         limit: limit
       },
@@ -48,19 +58,17 @@ export default async ({ req, res, log, error }) => {
     });
 
   } catch (err) {
-    // Логируем ошибку для отладки в консоли Appwrite
     error("Ошибка выполнения функции: " + err.message);
 
-    // Ответ в случае ошибки
     return res.json({
       success: false,
-      message: err.message, // Текст ошибки попадает сюда
+      message: err.message,
       meta: {
         total: 0,
         page: page,
         limit: limit
       },
-      data: [] // Пустой массив данных
+      data: []
     });
   }
 };
