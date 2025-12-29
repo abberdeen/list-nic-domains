@@ -1,7 +1,6 @@
 import { Client, Databases, Query } from 'node-appwrite';
 
 export default async ({ req, res, log, error }) => {
-  // 1. Initialize with your specific environment variables
   const client = new Client()
     .setEndpoint(process.env.APPWRITE_ENDPOINT)
     .setProject(process.env.APPWRITE_PROJECT_ID)
@@ -11,46 +10,40 @@ export default async ({ req, res, log, error }) => {
   const databaseId = process.env.APPWRITE_DATABASE_ID;
   const collectionId = process.env.APPWRITE_COLLECTION_ID;
 
-  // 2. Extract pagination details from the request
-  // Example URL: .../function-id?page=11&limit=200
   const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 100; // Default to 100 items per request
-  
-  // Calculate the starting point (offset)
+  const limit = parseInt(req.query.limit) || 2000;
   const offset = (page - 1) * limit;
 
-  // Validation
-  if (!databaseId || !collectionId) {
-    error("Environment variables for Database or Collection ID are missing.");
-    return res.json({ error: "Server configuration error" }, 500);
-  }
-
   try {
-    // 3. Fetch the specific slice of data
     const response = await databases.listDocuments(
       databaseId,
       collectionId,
       [
         Query.limit(limit),
         Query.offset(offset),
-        Query.orderDesc('$createdAt') // Recommended: keeps order consistent during paging
+        Query.orderDesc('$createdAt')
       ]
     );
 
-    // 4. Return results with metadata
+    // Фильтруем документы: оставляем только нужные ключи
+    const filteredDocuments = response.documents.map(doc => ({
+      domain: doc.domain,
+      date_registered: doc.date_registered,
+      createdAt: doc.$createdAt // переименовываем или оставляем системную дату
+    }));
+
     return res.json({
       success: true,
       meta: {
         total: response.total,
         page: page,
-        limit: limit,
-        remaining: Math.max(0, response.total - (offset + response.documents.length))
+        limit: limit
       },
-      data: response.documents
+      data: filteredDocuments // отправляем чистые данные
     });
 
   } catch (err) {
-    error("Appwrite Error: " + err.message);
+    error("Ошибка: " + err.message);
     return res.json({ success: false, message: err.message }, 500);
   }
 };
