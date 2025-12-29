@@ -11,10 +11,15 @@ export default async ({ req, res, log, error }) => {
   const collectionId = process.env.APPWRITE_COLLECTION_ID;
 
   const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 2000;
+  const limit = parseInt(req.query.limit) || 100;
   const offset = (page - 1) * limit;
 
   try {
+    // Проверка наличия переменных окружения
+    if (!databaseId || !collectionId) {
+      throw new Error("Конфигурация базы данных или коллекции не найдена.");
+    }
+
     const response = await databases.listDocuments(
       databaseId,
       collectionId,
@@ -25,25 +30,38 @@ export default async ({ req, res, log, error }) => {
       ]
     );
 
-    // Фильтруем документы: оставляем только нужные ключи
     const filteredDocuments = response.documents.map(doc => ({
       domain: doc.domain,
       date_registered: doc.date_registered,
-      createdAt: doc.$createdAt // переименовываем или оставляем системную дату
+      createdAt: doc.$createdAt
     }));
 
+    // Успешный ответ
     return res.json({
       success: true,
+      message: "", // Пустое сообщение при успехе
       meta: {
         total: response.total,
         page: page,
         limit: limit
       },
-      data: filteredDocuments // отправляем чистые данные
+      data: filteredDocuments
     });
 
   } catch (err) {
-    error("Ошибка: " + err.message);
-    return res.json({ success: false, message: err.message }, 500);
+    // Логируем ошибку для отладки в консоли Appwrite
+    error("Ошибка выполнения функции: " + err.message);
+
+    // Ответ в случае ошибки
+    return res.json({
+      success: false,
+      message: err.message, // Текст ошибки попадает сюда
+      meta: {
+        total: 0,
+        page: page,
+        limit: limit
+      },
+      data: [] // Пустой массив данных
+    });
   }
 };
