@@ -31,8 +31,8 @@ export default async ({ req, res, log, error }) => {
     );
 
     const filteredDocuments = response.documents.map(doc => ({
-      domain: doc.domain,
-      date_registered: doc.date_registered, 
+      d: doc.domain,
+      r: doc.date_registered, 
     }));
 
     // Успешный ответ
