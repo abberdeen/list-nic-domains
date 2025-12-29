@@ -11,7 +11,7 @@ export default async ({ req, res, log, error }) => {
   const collectionId = process.env.APPWRITE_COLLECTION_ID;
 
   const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 100;
+  const limit = parseInt(req.query.limit) || 3000;
   const offset = (page - 1) * limit;
 
   try {
